@@ -26,45 +26,40 @@ use std::vec;
  * Round N (0..5) contains (2^(5-N)) ordered games
  * Round name is for descriptive name: e.g. "Sweet Sixteen"
  */
-#[derive(Debug, Default)]
-pub struct Round<'r> {
+#[derive(Debug, Default, Clone)]
+pub struct Round {
     pub name: String,
     pub num: u8,
-    pub games: Option<Vec<Game<'r>>>,
+    pub games: Vec<Game>
 }
 
 /**
  * Round constructor
  * The constructor creates the round's games and initializes them (e.g.
  * scores = 0, etc) without assigning teams (these will be filled in
- * when a user makes picks) or initializing the game's "previous"
- * and "next" game pointers (this is done by the Bracket struct,
- * which holds all the tournament rounds).
+ * when a user makes picks).
  */
-impl<'r> Round<'r> {
+impl Round {
     pub fn new(name: String, num: u8) -> Self {
         assert!(num <= 5);
         let base: usize = 2;
         // make Vec have the correct number of games for this round
         let p: u32 = u32::from(5 - num);
-        let mut game_vec: Vec<Game<'r>> = vec![Game::<'r>::default(); base.pow(p)];
+        let mut game_vec: Vec<Game> = vec![Game::default(); base.pow(p)];
         // initialize all the games in the round
-        for g in game_vec.iter_mut() {
+        for (i, g) in game_vec.iter_mut().enumerate() {
             // Note: the Vec assignment above probably does exactly this (except
             // for putting the correct round, but I like being explicit).
-            (*g).round = num;
-            (*g).score_home = 0;
-            (*g).score_away = 0;
+            (*g).teams = [None, None];
+            (*g).score = [0, 0];
             (*g).completed = false;
-            (*g).team_home = None;
-            (*g).team_away = None;
-            (*g).prev = [None; 2];
-            (*g).next = None;
+            (*g).round = num;
+            (*g).index = i;
         }
         Self {
             name,
             num,
-            games: Some(game_vec),
+            games: game_vec,
         }
     }
 }

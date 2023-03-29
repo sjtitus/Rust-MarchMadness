@@ -16,8 +16,8 @@ use crate::tournament_field::REGIONMATCHUPS;
 #[derive(Debug)]
 pub struct Bracket<'b> {
     pub name: String,
-    pub tournament_name: String,
-    pub rounds: [Option<Round<'b>>; 6],
+    pub tournament: Option<&'b Tournament>,
+    pub rounds: [Option<Round>; 6],
 }
 
 /**
@@ -30,18 +30,16 @@ impl<'b> Default for Bracket<'b> {
         const EMPTYROUND: Option<Round> = None;
         let mut s = Bracket {
             name: String::default(),
-            tournament_name: String::default(),
+            tournament: None,
             rounds: [EMPTYROUND; 6],
         };
         // create empty bracket rounds
         for i in 0..6 {
-            s.rounds[i] = Some(Round::<'b>::new(
+            s.rounds[i] = Some(Round::new(
                 format!("round {}", i).to_string(),
                 i as u8,
             ));
         }
-        // create tree structure by wiring rounds together
-        s.connect_rounds();
         return s;
     }
 }
@@ -49,9 +47,11 @@ impl<'b> Default for Bracket<'b> {
 impl<'b> Bracket<'b> {
     //_________________________________________________________________________
     // Create a new empty named bracket
-    pub fn new(bracket_name: &str) -> Self {
-        let mut s = Bracket::default();
+    pub fn new(bracket_name: &str, tournament: &'b Tournament) -> Self {
+        let mut s = Bracket::<'b>::default();
         s.name = bracket_name.to_string();
+        s.tournament = Some(tournament);
+        s.populate();
         return s;
     }
 
@@ -59,15 +59,16 @@ impl<'b> Bracket<'b> {
     // populate
     // Populate this bracket for a specific tournament
     // Assigns teams to the round 0 games.
-    pub fn populate(&mut self, tournament: &'b Tournament) {
+    fn populate(&mut self) {
         println!(
             "populating bracket {} using tournament {}",
-            self.name, tournament.name
+            self.name, self.tournament.unwrap().name
         );
 
         // Iterate over round 0 games (gindex is [0 to 31])
-        let game_vect = self.rounds[0].as_mut().unwrap().games.as_mut().unwrap();
+        let game_vect = &mut self.rounds[0].as_mut().unwrap().games;
         for (gindex, game) in game_vect.iter_mut().enumerate() {
+
             // region_num will be [0, 3]
             let region_num: usize = gindex / 8;
 
@@ -83,52 +84,18 @@ impl<'b> Bracket<'b> {
             let tindex_home = (region_num * 16) + reg_tindex_home;
             let tindex_away = (region_num * 16) + reg_tindex_away;
 
-            // assign home and away teams
-            game.team_home = Some(tournament.teams[tindex_home].as_ref().unwrap());
-            game.team_away = Some(tournament.teams[tindex_away].as_ref().unwrap());
+            // populate teams
+            game.teams[0] = Some(tindex_home as u16);
+            game.teams[1] = Some(tindex_away as u16);
 
             println!(
-                "\nBracket {}: round 0 game {}:\n\thome: {}\n\taway: {}\n\tprev: {}/{}",
+                "\nBracket {}: round 0 game {}:\n\thome: {}\n\taway: {}",
                 self.name,
                 gindex,
-                game.team_home.unwrap().name,
-                game.team_away.unwrap().name,
-                game.prev[0].is_none(),
-                game.prev[1].is_none()
+                self.tournament.unwrap().teams[tindex_home].as_ref().unwrap().name,
+                self.tournament.unwrap().teams[tindex_away].as_ref().unwrap().name,
             );
         }
-    }
 
-    // _____________________ private _______________________
-    //
-
-    // connect_rounds
-    // connect a bracket's rounds into tournament "tree" structure
-    fn connect_rounds(&mut self) {
-        // Iterate through rounds 1-5, setting 'prev' pointers for current
-        // round and 'next' pointers for previous round
-        for rindex in 1..6 {
-            //
-            // get mutable refs to current and previous rounds (rindex and rindex-1).
-            // Note: we can safely unwrap() because we've populated everything.
-            let (prev_array, current_array) = self.rounds.split_at_mut(rindex);
-            let prev_round = prev_array[prev_array.len() - 1].as_mut().unwrap();
-            let prev_games = prev_round.games.as_mut().unwrap();
-            let current_round = current_array[0].as_mut().unwrap();
-            let current_games = current_round.games.as_mut().unwrap();
-
-            for (gindex, cg) in current_games.iter_mut().enumerate() {
-                let first: usize = 2 * gindex;
-                let second: usize = first + 1;
-                // println!("\nconnect: round {} game {}:\n\tprev: round {} games {} and {}",
-                //    rindex, gindex, rindex - 1, first, second);
-                (*cg).prev[0] = Some(first);
-                (*cg).prev[1] = Some(second);
-                // println!("connect: \tround {} games {} and {}: next game: round {} game {}",
-                //    rindex - 1, first, second, rindex, gindex);
-                prev_games[first].next = Some(gindex);
-                prev_games[second].next = Some(gindex);
-            }
-        }
     }
 }

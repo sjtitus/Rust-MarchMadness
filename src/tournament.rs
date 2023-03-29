@@ -12,12 +12,13 @@ use crate::team::Team;
 use crate::tournament_field::get_tournament_field;
 
 #[derive(Debug)]
-pub struct Tournament<'t> {
+pub struct Tournament {
     pub name: String,
-    pub teams: [Option<Team<'t>>; 64],
+    // Put array of 64 teams on the heap
+    pub teams: Box<[Option<Team>; 64]>,
 }
 
-impl<'t> Tournament<'t> {
+impl Tournament {
     //
     // Create a tournament
     // Name must match the name of an existing tournament field
@@ -25,7 +26,7 @@ impl<'t> Tournament<'t> {
         const EMPTYTEAM: Option<Team> = None;
         let mut s = Tournament {
             name: name.to_string(),
-            teams: [EMPTYTEAM; 64],
+            teams: Box::new([EMPTYTEAM; 64])
         };
         s.load()
             .expect(&format!("failed to load tourney field for '{}'", name));
@@ -34,9 +35,7 @@ impl<'t> Tournament<'t> {
 
     // Create a new tournament bracket
     pub fn create_bracket(&self, bracket_name: &str) -> Bracket {
-        let mut b = Bracket::new(bracket_name);
-        b.populate(self);
-        return b;
+        return Bracket::new(bracket_name, self);
     }
 
     //_________________________________________________________________________

@@ -6,23 +6,20 @@
  * tournament: it region, seed, and the games (up to 6) in which it plays.
  *
  */
-use crate::game::Game;
 
 #[derive(Debug, Default)]
-pub struct Team<'t> {
+pub struct Team {
     pub name: String,
     pub region: String,
     pub seed: u8,
-    pub games: [Option<&'t Game<'t>>; 6],
 }
 
-impl<'t> Team<'t> {
+impl Team {
     pub fn new(name: &str, region: &str, seed: u8) -> Self {
         Self {
             name: name.to_string(),
             region: region.to_string(),
             seed,
-            games: [None; 6],
         }
     }
 }
